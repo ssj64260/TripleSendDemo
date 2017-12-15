@@ -31,11 +31,11 @@ public class ImageUtils {
         final int backgroundWidth = 600;
         final int backgroundHeight = 300;
         final int backgroundColor = 0xffffffff;
-        final int textColor = 0xff000000;
+        final int textColor = 0xff0B0B0B;
         final int textSize = 30;
         final int pictureWidth = 200;
         final int pictureHeight = 200;
-        final int pictureTop = 50;
+        final int textHeight = 50;
 
         final Paint paint = new Paint();
         paint.setColor(backgroundColor);
@@ -49,19 +49,19 @@ public class ImageUtils {
 
         final Bitmap bitmap1 = BitmapFactory.decodeFile(path1);
         final Rect pictureRect1 = new Rect(0, 0, pictureWidth, pictureHeight);
-        final RectF dst1 = new RectF(0, pictureTop, pictureWidth, pictureHeight + pictureTop);
+        final RectF dst1 = new RectF(0, textHeight, pictureWidth, pictureHeight + textHeight);
         canvas.drawBitmap(bitmap1, pictureRect1, dst1, null);
         bitmap1.recycle();
 
-        final Bitmap bitmap2 = BitmapFactory.decodeFile(path2);
         final Rect pictureRect2 = new Rect(0, 0, pictureWidth, pictureHeight);
-        final RectF dst2 = new RectF(pictureWidth, pictureTop, pictureWidth * 2, pictureHeight + pictureTop);
+        final RectF dst2 = new RectF(pictureWidth, textHeight, pictureWidth * 2, pictureHeight + textHeight);
+        final Bitmap bitmap2 = BitmapFactory.decodeFile(path2);
         canvas.drawBitmap(bitmap2, pictureRect2, dst2, null);
         bitmap2.recycle();
 
-        final Bitmap bitmap3 = BitmapFactory.decodeFile(path3);
         final Rect pictureRect3 = new Rect(0, 0, pictureWidth, pictureHeight);
-        final RectF dst3 = new RectF(pictureWidth * 2, pictureTop, pictureWidth * 3, pictureHeight + pictureTop);
+        final RectF dst3 = new RectF(pictureWidth * 2, textHeight, pictureWidth * 3, pictureHeight + textHeight);
+        final Bitmap bitmap3 = BitmapFactory.decodeFile(path3);
         canvas.drawBitmap(bitmap3, pictureRect3, dst3, null);
         bitmap3.recycle();
 
@@ -72,9 +72,24 @@ public class ImageUtils {
         final Rect titleRect = new Rect();
         paint.getTextBounds(title, 0, title.length(), titleRect);
         final float titleLeft = (backgroundWidth - titleRect.right) / 2f;
-        final float titleTop = (pictureTop - textSize) / 2f - titleRect.top;
+        final float titleTop = (textHeight - textSize) / 2f - titleRect.top;
         canvas.drawText(title, titleLeft, titleTop, paint);
 
+        final Rect nameRect1 = new Rect();
+        paint.getTextBounds(name1, 0, name1.length(), nameRect1);
+        final float nameTop = textHeight + pictureHeight + (textHeight - textSize) / 2f - nameRect1.top;
+        final float nameLeft1 = (pictureWidth - nameRect1.right) / 2f;
+        canvas.drawText(name1, nameLeft1, nameTop, paint);
+
+        final Rect nameRect2 = new Rect();
+        paint.getTextBounds(name2, 0, name2.length(), nameRect2);
+        final float nameLeft2 = pictureWidth + (pictureWidth - nameRect2.right) / 2f;
+        canvas.drawText(name2, nameLeft2, nameTop, paint);
+
+        final Rect nameRect3 = new Rect();
+        paint.getTextBounds(name3, 0, name3.length(), nameRect3);
+        final float nameLeft3 = pictureWidth * 2 + (pictureWidth - nameRect3.right) / 2f;
+        canvas.drawText(name3, nameLeft3, nameTop, paint);
 
         final String imageName = System.currentTimeMillis() + ".jpg";
         final File newFile = ImageUtils.saveBitmapToJpg(picture, savePath, imageName, 100);

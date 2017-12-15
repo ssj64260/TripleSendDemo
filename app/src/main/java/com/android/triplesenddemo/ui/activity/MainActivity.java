@@ -1,9 +1,16 @@
 package com.android.triplesenddemo.ui.activity;
 
+import android.Manifest;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.view.View;
@@ -14,6 +21,8 @@ import android.widget.TextView;
 import com.android.triplesenddemo.R;
 import com.android.triplesenddemo.app.BaseActivity;
 import com.android.triplesenddemo.config.Constants;
+import com.android.triplesenddemo.utils.AppManager;
+import com.android.triplesenddemo.utils.DataCleanManager;
 import com.android.triplesenddemo.utils.FastClick;
 import com.android.triplesenddemo.utils.ImageUtils;
 import com.android.triplesenddemo.utils.SDCardUtils;
@@ -26,10 +35,12 @@ import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.entity.LocalMedia;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends BaseActivity {
 
+    private static final int REQUEST_TO_SETTING = 1000;//跳转到系统设置权限页面
     private static final int REQUEST_CODE_PICTURE1 = 1001;
     private static final int REQUEST_CODE_PICTURE2 = 1002;
     private static final int REQUEST_CODE_PICTURE3 = 1003;
@@ -47,16 +58,23 @@ public class MainActivity extends BaseActivity {
     private TextView tvPath;
     private ImageView ivPreview;
 
+    private int permissionPosition = 0;//当前请求权限位置
+    private String[] permissions;
+    private String[] errorTips;
+
+    private AlertDialog mAlertDialog;
+
     private String mPath1;
     private String mPath2;
     private String mPath3;
 
     private String mBasePath;
-    private String mTempPath;
+    private String mCachePath;
 
     private View.OnClickListener mClick = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
+            hideKeyboard();
             switch (v.getId()) {
                 case R.id.iv_picture1:
                     selectPicture(REQUEST_CODE_PICTURE1);
@@ -77,6 +95,7 @@ public class MainActivity extends BaseActivity {
     private View.OnLongClickListener mLongClick = new View.OnLongClickListener() {
         @Override
         public boolean onLongClick(View v) {
+            hideKeyboard();
             if (!TextUtils.isEmpty(mPath1)) {
                 switch (v.getId()) {
                     case R.id.iv_picture2:
@@ -101,14 +120,32 @@ public class MainActivity extends BaseActivity {
         setContentView(R.layout.activity_main);
 
         initData();
-        initView();
+        requestPermission();
 
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        final File cacheDir = new File(mCachePath);
+        if (cacheDir.exists()) {
+            DataCleanManager.deleteAllFiles(cacheDir);
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK) {
+        if (REQUEST_TO_SETTING == requestCode) {
+            if (permissionPosition < permissions.length) {
+                if (ContextCompat.checkSelfPermission(this, permissions[permissionPosition]) != PackageManager.PERMISSION_GRANTED) {
+                    finish();
+                } else {
+                    permissionPosition++;
+                    requestPermission();
+                }
+            }
+        } else if (resultCode == RESULT_OK) {
             final List<LocalMedia> selectList = PictureSelector.obtainMultipleResult(data);
             if (selectList != null && selectList.size() > 0) {
                 final LocalMedia media = selectList.get(0);
@@ -127,6 +164,22 @@ public class MainActivity extends BaseActivity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (grantResults.length > 0) {
+            if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                if (permissionPosition < errorTips.length) {
+                    showPermissionTipsDialog();
+                } else {
+                    finish();
+                }
+            } else {
+                permissionPosition++;
+                requestPermission();
+            }
+        }
+    }
+
+    @Override
     public void onBackPressed() {
         if (!FastClick.isExitClick()) {
             ToastMaster.toast("再次点击退出程序");
@@ -137,15 +190,41 @@ public class MainActivity extends BaseActivity {
 
     private void initData() {
         mBasePath = SDCardUtils.getSDCardDir() + Constants.PATH_BASE;
-        mTempPath = SDCardUtils.getSDCardDir() + Constants.PATH_TEMP;
+        mCachePath = SDCardUtils.getExternalCacheDir(this);
+
         final File baseDir = new File(mBasePath);
-        final File tempDir = new File(mTempPath);
+        final File tempDir = new File(mCachePath);
         if (!baseDir.exists()) {
             baseDir.mkdir();
         }
         if (!tempDir.exists()) {
             tempDir.mkdir();
         }
+
+        final String appName = getString(R.string.app_name);
+        permissions = new String[]{
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+        };
+        errorTips = new String[]{
+                String.format("在设置-应用-%1$s-权限中开启存储权限，以正常使用该功能", appName),
+                String.format("在设置-应用-%1$s-权限中开启相机权限，以正常使用该功能", appName),
+                String.format("在设置-应用-%1$s-权限中开启麦克风权限，以正常使用该功能", appName)
+        };
+
+        final List<String> requestList = new ArrayList<>();
+        final List<String> errorTipsList = new ArrayList<>();
+        for (int i = 0; i < permissions.length; i++) {
+            String permission = permissions[i];
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                String tips = this.errorTips[i];
+                requestList.add(permission);
+                errorTipsList.add(tips);
+            }
+        }
+        permissions = requestList.toArray(new String[requestList.size()]);
+        errorTips = errorTipsList.toArray(new String[errorTipsList.size()]);
     }
 
     private void initView() {
@@ -174,6 +253,36 @@ public class MainActivity extends BaseActivity {
         ivPicture3.setOnLongClickListener(mLongClick);
     }
 
+    private void requestPermission() {
+        if (permissionPosition < permissions.length) {
+            ActivityCompat.requestPermissions(this, new String[]{permissions[permissionPosition]}, permissionPosition);
+        } else {
+            initView();
+        }
+    }
+
+    private void showPermissionTipsDialog() {
+        if (mAlertDialog == null) {
+            mAlertDialog = new AlertDialog.Builder(this).create();
+            mAlertDialog.setTitle("权限申请");
+            mAlertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "去设置", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    finish();
+                    AppManager.showInstalledAppDetails(MainActivity.this, getPackageName(), REQUEST_TO_SETTING);
+                }
+            });
+            mAlertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    finish();
+                }
+            });
+        }
+        mAlertDialog.setMessage(errorTips[permissionPosition]);
+        mAlertDialog.show();
+    }
+
     private void selectPicture(int requestCode) {
         PictureSelector.create(this)
                 .openGallery(PictureMimeType.ofImage())
@@ -189,7 +298,7 @@ public class MainActivity extends BaseActivity {
                 .withAspectRatio(1, 1)
                 .hideBottomControls(false)
                 .isGif(false)
-                .compressSavePath(mTempPath)
+                .compressSavePath(mCachePath)
                 .freeStyleCropEnabled(false)
                 .circleDimmedLayer(false)
                 .showCropFrame(true)
