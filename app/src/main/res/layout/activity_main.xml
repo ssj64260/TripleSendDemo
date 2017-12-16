@@ -153,8 +153,19 @@
             android:layout_width="300dp"
             android:layout_height="150dp"
             android:layout_marginTop="10dp"
-            android:background="@color/colorAccent"
+            android:background="@color/white"
             android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/tv_delete"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_margin="20dp"
+            android:background="@drawable/selector_bg_button_green"
+            android:gravity="center"
+            android:text="删除"
+            android:textColor="@color/white"
+            android:textSize="@dimen/textsize_17" />
 
     </LinearLayout>
 

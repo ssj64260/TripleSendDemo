@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
@@ -57,6 +58,7 @@ public class MainActivity extends BaseActivity {
     private TextView tvDoCreate;
     private TextView tvPath;
     private ImageView ivPreview;
+    private TextView tvDelete;
 
     private int permissionPosition = 0;//当前请求权限位置
     private String[] permissions;
@@ -70,6 +72,7 @@ public class MainActivity extends BaseActivity {
 
     private String mBasePath;
     private String mCachePath;
+    private File mCurrentImage;
 
     private View.OnClickListener mClick = new View.OnClickListener() {
         @Override
@@ -87,6 +90,12 @@ public class MainActivity extends BaseActivity {
                     break;
                 case R.id.tv_do_create:
                     doCreatePicture();
+                    break;
+                case R.id.iv_preview:
+                    doShare();
+                    break;
+                case R.id.tv_delete:
+                    doDelete();
                     break;
             }
         }
@@ -240,6 +249,7 @@ public class MainActivity extends BaseActivity {
         tvDoCreate = (TextView) findViewById(R.id.tv_do_create);
         tvPath = (TextView) findViewById(R.id.tv_path);
         ivPreview = (ImageView) findViewById(R.id.iv_preview);
+        tvDelete = (TextView) findViewById(R.id.tv_delete);
 
         mToolbar.setTitle(getString(R.string.app_name));
         setSupportActionBar(mToolbar);
@@ -248,6 +258,8 @@ public class MainActivity extends BaseActivity {
         ivPicture2.setOnClickListener(mClick);
         ivPicture3.setOnClickListener(mClick);
         tvDoCreate.setOnClickListener(mClick);
+        ivPreview.setOnClickListener(mClick);
+        tvDelete.setOnClickListener(mClick);
 
         ivPicture2.setOnLongClickListener(mLongClick);
         ivPicture3.setOnLongClickListener(mLongClick);
@@ -335,13 +347,13 @@ public class MainActivity extends BaseActivity {
             ThreadPoolUtil.getInstache().cachedExecute(new Runnable() {
                 @Override
                 public void run() {
-                    final File file = ImageUtils.createExpression(title, mPath1, mPath2, mPath3, name1, name2, name3, mBasePath);
+                    mCurrentImage = ImageUtils.createExpression(title, mPath1, mPath2, mPath3, name1, name2, name3, mBasePath);
 
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            if (file.exists()) {
-                                final String filePath = file.getAbsolutePath();
+                            if (mCurrentImage.exists()) {
+                                final String filePath = mCurrentImage.getAbsolutePath();
                                 ImageLoaderFactory.getLoader().loadImage(MainActivity.this, ivPreview, filePath);
                                 tvPath.setText("保存路径：" + filePath);
                             } else {
@@ -353,5 +365,28 @@ public class MainActivity extends BaseActivity {
                 }
             });
         }
+    }
+
+    private void doShare() {
+        if (mCurrentImage != null && mCurrentImage.exists() && mCurrentImage.isFile()) {
+            final Uri uri = Uri.fromFile(mCurrentImage);
+
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("image/jpg");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(Intent.createChooser(intent, ""));
+        } else {
+            Snackbar.make(mRootView, "文件不存在", Snackbar.LENGTH_LONG).show();
+        }
+    }
+
+    private void doDelete() {
+        if (mCurrentImage != null && mCurrentImage.exists()) {
+            mCurrentImage.delete();
+            tvPath.setText("");
+            ivPreview.setImageResource(0);
+        }
+        Snackbar.make(mRootView, "文件已删除", Snackbar.LENGTH_LONG).show();
     }
 }
