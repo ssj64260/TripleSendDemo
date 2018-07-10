@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <paths>
+        <files-path
+            name="temp_images"
+            path="temp" />
+        <files-path
+            name="attendance_images"
+            path="attendance" />
+        <files-path
+            name="sales_images"
+            path="sales" />
+        <files-path
+            name="service_images"
+            path="service" />
+
+        <external-path
+            name="camera_temp_photos"
+            path="Android/data/com.android.triplesenddemo/files/temp" />
+        <external-path
+            name="camera_attendance_photos"
+            path="Android/data/com.android.triplesenddemo/files/attendance" />
+        <external-path
+            name="camera_sales_photos"
+            path="Android/data/com.android.triplesenddemo/files/sales" />
+        <external-path
+            name="camera_service_photos"
+            path="Android/data/com.android.triplesenddemo/files/service" />
+    </paths>
+</resources>
